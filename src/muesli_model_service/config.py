@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     port: int = 8765
     log_level: str = "info"
     enable_mock_backend: bool = True
+    enable_smolvla_backend: bool = False
     replay_path: str | None = None
     session_ttl_seconds: int = 3600
     max_sessions: int = Field(default=128, ge=1)
+    smolvla_model_path: str = "lerobot/smolvla_base"
+    smolvla_device: str = "cuda"
+    smolvla_profile_path: str | None = None
+    smolvla_action_type: str = "joint_targets"
+    smolvla_dt_ms: int = Field(default=33, ge=0)

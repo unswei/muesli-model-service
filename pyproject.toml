@@ -3,7 +3,7 @@ name = "muesli-model-service"
 version = "0.2.0"
 description = "External model-backed capability service for muesli-bt"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [
   { name = "UNSWEI" }
@@ -27,6 +27,9 @@ dev = [
   "ruff>=0.6",
   "pyright>=1.1"
 ]
+smolvla = [
+  "lerobot[smolvla]==0.5.1"
+]
 
 [project.scripts]
 muesli-model-service = "muesli_model_service.cli:main"
@@ -46,8 +49,11 @@ ignore = []
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+  "smolvla_gpu: requires LeRobot SmolVLA dependencies and a GPU"
+]
 
 [tool.pyright]
 include = ["src", "tests"]
-pythonVersion = "3.11"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"

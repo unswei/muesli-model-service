@@ -23,9 +23,10 @@ Initial protocol-first implementation.
 - Example WebSocket clients for describe, scoring, and action chunk sessions.
 - GitHub Actions CI running sync, lint, format check, type check, and tests.
 - Documentation for protocol, architecture, examples, and roadmap.
+- Optional LeRobot SmolVLA backend for `cap.vla.action_chunk.v1`, including profile-based
+  observation mapping, fake-adapter unit tests, and magrathea GPU validation notes.
 
 ### Notes
 
 - v0.1 intentionally has no LeRobot, PyTorch, CUDA, ROS2, database, web UI, or robot hardware dependency.
 - Model outputs are proposals only; robot-facing dispatch and safety remain owned by `muesli-bt`.
-

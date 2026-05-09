@@ -6,6 +6,7 @@ from fastapi import FastAPI, WebSocket
 from muesli_model_service import __version__
 from muesli_model_service.backends.mock import MockBackend
 from muesli_model_service.backends.replay import ReplayBackend
+from muesli_model_service.backends.smolvla import SmolVLABackend
 from muesli_model_service.config import Settings
 from muesli_model_service.logging import configure_logging
 from muesli_model_service.runtime.dispatcher import Dispatcher
@@ -22,6 +23,18 @@ def build_runtime(settings: Settings) -> Dispatcher:
         registry.register("mock", MockBackend(sessions))
     if settings.replay_path:
         registry.register("replay", ReplayBackend.from_path(sessions, settings.replay_path))
+    if settings.enable_smolvla_backend:
+        registry.register(
+            "smolvla",
+            SmolVLABackend(
+                sessions,
+                model_path=settings.smolvla_model_path,
+                device=settings.smolvla_device,
+                profile_path=settings.smolvla_profile_path,
+                action_type=settings.smolvla_action_type,
+                dt_ms=settings.smolvla_dt_ms,
+            ),
+        )
     return Dispatcher(registry)
 
 

@@ -23,6 +23,5 @@ This file tracks near-term engineering work that is not yet part of the implemen
 - Add action bounds and schema registry support.
 - Add local reference resolvers for `file://`, `artifact://`, `frame://`, and `state://`.
 - Add backend plugin loading and optional dependency groups.
-- Add a first real learned-policy backend behind optional dependencies.
+- Add additional real learned-policy backends behind optional dependencies.
 - Add Zenoh or another edge transport once the WebSocket bridge is proven.
-

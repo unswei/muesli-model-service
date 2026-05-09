@@ -20,6 +20,10 @@ def serve(
     log_level: Annotated[str, typer.Option()] = "info",
     replay_path: Annotated[Path | None, typer.Option()] = None,
     enable_mock_backend: Annotated[bool, typer.Option()] = True,
+    enable_smolvla_backend: Annotated[bool, typer.Option()] = False,
+    smolvla_model_path: Annotated[str, typer.Option()] = "lerobot/smolvla_base",
+    smolvla_device: Annotated[str, typer.Option()] = "cuda",
+    smolvla_profile_path: Annotated[Path | None, typer.Option()] = None,
 ) -> None:
     settings = Settings(
         host=host,
@@ -27,6 +31,10 @@ def serve(
         log_level=log_level,
         replay_path=str(replay_path) if replay_path else None,
         enable_mock_backend=enable_mock_backend,
+        enable_smolvla_backend=enable_smolvla_backend,
+        smolvla_model_path=smolvla_model_path,
+        smolvla_device=smolvla_device,
+        smolvla_profile_path=str(smolvla_profile_path) if smolvla_profile_path else None,
     )
     app = create_app(settings)
     uvicorn.run(app, host=settings.host, port=settings.port, log_level=settings.log_level)

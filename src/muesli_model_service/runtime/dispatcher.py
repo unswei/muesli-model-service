@@ -115,9 +115,10 @@ class Dispatcher:
             raise UnavailableResponse(exc) from exc
 
     def _backend_for_session(self, session_id: str):
-        for backend in self.registry._backends.values():
+        for backend_key, backend in self.registry._backends.items():
             sessions = getattr(backend, "sessions", None)
-            if sessions is not None and sessions.get(session_id) is not None:
+            session = sessions.get(session_id) if sessions is not None else None
+            if session is not None and session.backend_key == backend_key:
                 return backend
         return None
 
