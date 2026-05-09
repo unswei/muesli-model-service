@@ -17,6 +17,7 @@ from muesli_model_service.protocol.statuses import ProtocolStatus
 from muesli_model_service.runtime.dispatcher import Dispatcher
 from muesli_model_service.runtime.registry import CapabilityRegistry
 from muesli_model_service.runtime.sessions import SessionManager
+from muesli_model_service.store.frames import FrameStore
 
 
 class FakeSmolVLAAdapter:
@@ -112,6 +113,43 @@ async def test_smolvla_backend_rejects_missing_required_image() -> None:
     assert result.status == ProtocolStatus.INVALID_REQUEST
     assert result.error is not None
     assert result.error.code == "missing_image"
+
+
+async def test_smolvla_backend_resolves_frame_refs(tmp_path) -> None:
+    frame_store = FrameStore(tmp_path / "frames")
+    camera1 = frame_store.put("camera1", b"fake-front", media_type="image/jpeg", timestamp_ns=100)
+    camera2 = frame_store.put("camera2", b"fake-wrist", media_type="image/jpeg", timestamp_ns=200)
+    adapter = FakeSmolVLAAdapter()
+    backend = SmolVLABackend(
+        SessionManager(),
+        device="cpu",
+        adapter=adapter,
+        frame_store=frame_store,
+    )
+    payload = make_request_input()
+    payload["observation"]["images"] = {
+        "camera1": {"ref": "frame://camera1/latest"},
+        "camera2": {"ref": "frame://camera2/latest"},
+    }
+
+    start = await backend.start(
+        RequestEnvelope(
+            id="start",
+            op=Operation.START,
+            capability="cap.vla.action_chunk.v1",
+            input=payload,
+        )
+    )
+    step = await backend.step(
+        RequestEnvelope(id="step", op=Operation.STEP, session_id=start.session_id)
+    )
+
+    assert step.status == ProtocolStatus.ACTION_CHUNK
+    images = adapter.calls[0].observation["images"]
+    assert images["camera1"]["path"] == str(camera1.path)
+    assert images["camera1"]["resolved_ref"] == "frame://camera1/100"
+    assert images["camera2"]["path"] == str(camera2.path)
+    assert images["camera2"]["resolved_ref"] == "frame://camera2/200"
 
 
 async def test_smolvla_backend_rejects_malformed_model_output() -> None:
@@ -218,6 +256,7 @@ async def test_app_registers_smolvla_backend_after_mock(monkeypatch) -> None:
             profile_path: str | None,
             action_type: str,
             dt_ms: int,
+            frame_store: FrameStore | None,
         ) -> None:
             super().__init__(
                 sessions,
@@ -227,6 +266,7 @@ async def test_app_registers_smolvla_backend_after_mock(monkeypatch) -> None:
                 action_type=action_type,
                 dt_ms=dt_ms,
                 adapter=FakeSmolVLAAdapter(),
+                frame_store=frame_store,
             )
 
     monkeypatch.setattr("muesli_model_service.app.SmolVLABackend", FakeRegisteredBackend)

@@ -1,7 +1,8 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Header, HTTPException, Request, WebSocket
 
 from muesli_model_service import __version__
 from muesli_model_service.backends.mock import MockBackend
@@ -12,11 +13,12 @@ from muesli_model_service.logging import configure_logging
 from muesli_model_service.runtime.dispatcher import Dispatcher
 from muesli_model_service.runtime.registry import CapabilityRegistry
 from muesli_model_service.runtime.sessions import SessionManager
+from muesli_model_service.store.frames import FrameStore, FrameStoreError
 from muesli_model_service.transports.http import describe_http
 from muesli_model_service.transports.websocket import websocket_endpoint
 
 
-def build_runtime(settings: Settings) -> Dispatcher:
+def build_runtime(settings: Settings, frame_store: FrameStore | None = None) -> Dispatcher:
     sessions = SessionManager(max_sessions=settings.max_sessions)
     registry = CapabilityRegistry()
     if settings.enable_mock_backend:
@@ -33,6 +35,7 @@ def build_runtime(settings: Settings) -> Dispatcher:
                 profile_path=settings.smolvla_profile_path,
                 action_type=settings.smolvla_action_type,
                 dt_ms=settings.smolvla_dt_ms,
+                frame_store=frame_store,
             ),
         )
     return Dispatcher(registry)
@@ -41,7 +44,8 @@ def build_runtime(settings: Settings) -> Dispatcher:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     configure_logging(settings.log_level)
-    dispatcher = build_runtime(settings)
+    frame_store = FrameStore(Path(settings.frame_store_root))
+    dispatcher = build_runtime(settings, frame_store)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -53,6 +57,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.dispatcher = dispatcher
+    app.state.frame_store = frame_store
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -62,6 +67,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def describe() -> dict:
         result = await describe_http(dispatcher)
         return result.model_dump(mode="json")
+
+    @app.put("/v1/frames/{name}")
+    async def put_frame(
+        name: str,
+        request: Request,
+        content_type: str | None = Header(default=None, alias="content-type"),
+        timestamp_ns: int | None = Header(default=None, alias="x-mms-timestamp-ns"),
+        encoding: str | None = Header(default=None, alias="x-mms-encoding"),
+    ) -> dict:
+        media_type = content_type or "application/octet-stream"
+        content = await request.body()
+        try:
+            record = frame_store.put(
+                name,
+                content,
+                media_type=media_type,
+                timestamp_ns=timestamp_ns,
+                encoding=encoding,
+            )
+        except FrameStoreError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return record.to_payload()
 
     @app.websocket("/v1/ws")
     async def ws(websocket: WebSocket) -> None:

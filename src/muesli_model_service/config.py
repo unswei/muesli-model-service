@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     replay_path: str | None = None
     session_ttl_seconds: int = 3600
     max_sessions: int = Field(default=128, ge=1)
+    frame_store_root: str = "/tmp/muesli-model-service/frames"
     smolvla_model_path: str = "lerobot/smolvla_base"
     smolvla_device: str = "cuda"
     smolvla_profile_path: str | None = None

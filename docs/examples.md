@@ -20,6 +20,14 @@
 
 ## Start, Step, Cancel
 
+Upload live frames first when the model needs images:
+
+```bash
+curl -X PUT http://127.0.0.1:8765/v1/frames/camera1 \
+  -H 'Content-Type: image/jpeg' \
+  --data-binary @camera1.jpg
+```
+
 ```json
 {
   "version": "0.2",
@@ -28,7 +36,12 @@
   "capability": "cap.vla.action_chunk.v1",
   "input": {
     "instruction": "inspect the plant",
-    "observation": {}
+    "observation": {
+      "state": [0.0, 0.0],
+      "images": {
+        "camera1": { "ref": "frame://camera1/latest" }
+      }
+    }
   }
 }
 ```

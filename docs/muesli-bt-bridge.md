@@ -67,6 +67,15 @@ The bridge uses `MMSP v0.2` envelopes over WebSocket first:
 
 Session calls use `start`, then `step`, `cancel`, `status`, or `close` with `session_id`.
 
+Camera frames should be staged before VLA calls with HTTP frame ingest:
+
+```http
+PUT /v1/frames/camera1
+Content-Type: image/jpeg
+```
+
+The body is the encoded frame. The response returns refs such as `frame://camera1/latest`.
+
 ## example
 
 A `muesli-bt` world-model request maps to `MMSP` as:
@@ -90,10 +99,34 @@ A `muesli-bt` world-model request maps to `MMSP` as:
 
 The service response is still a proposal. `muesli-bt` must validate the output before using it in a host capability or action.
 
+A VLA request should reference already-ingested frames:
+
+```json
+{
+  "version": "0.2",
+  "id": "vla-1",
+  "op": "start",
+  "capability": "cap.vla.action_chunk.v1",
+  "deadline_ms": 100,
+  "input": {
+    "instruction": "move forward slowly",
+    "observation": {
+      "state": [0.0, 0.0, 0.0],
+      "images": {
+        "camera1": { "ref": "frame://camera1/latest" },
+        "camera2": { "ref": "frame://camera2/latest" },
+        "camera3": { "ref": "frame://camera3/latest" }
+      }
+    }
+  }
+}
+```
+
 ## gotchas
 
 - Service availability is optional. Unavailable service status must be fallback-capable in `muesli-bt`.
 - Backend metadata is not part of BT semantics.
+- `frame://.../latest` is a service-local handle. Image bytes are transported by frame ingest, not by the model-call envelope.
 - A timeout on `step` does not implicitly cancel the service session.
 - Invalid, stale, unsafe, or late outputs must be rejected before host execution.
 

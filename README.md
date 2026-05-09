@@ -25,6 +25,16 @@ Describe capabilities:
 curl http://127.0.0.1:8765/v1/describe
 ```
 
+Publish a camera frame for model calls:
+
+```bash
+curl -X PUT http://127.0.0.1:8765/v1/frames/camera1 \
+  -H 'Content-Type: image/jpeg' \
+  --data-binary @frame.jpg
+```
+
+The response includes `frame://camera1/latest`, which VLA requests can use instead of copying image bytes into every model call.
+
 Run the WebSocket action-chunk demo while the service is running:
 
 ```bash

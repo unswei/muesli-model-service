@@ -58,6 +58,32 @@ state, or robot hardware directly.
 }
 ```
 
+For live robot or simulator use, publish frames first and pass `frame://` refs instead of
+service-local paths:
+
+```bash
+curl -X PUT http://127.0.0.1:8765/v1/frames/camera1 \
+  -H 'Content-Type: image/jpeg' \
+  -H 'X-MMS-Timestamp-Ns: 1730000000000000000' \
+  --data-binary @front.jpg
+```
+
+Then reference the latest frame in the VLA request:
+
+```json
+{
+  "instruction": "pick up the block",
+  "observation": {
+    "robot_type": "so100_follower",
+    "state": [0.0, 0.1],
+    "images": {
+      "camera1": { "ref": "frame://camera1/latest" },
+      "camera2": { "ref": "frame://camera2/latest" }
+    }
+  }
+}
+```
+
 The profile maps request image names to the feature names expected by the checkpoint:
 
 ```json
@@ -73,5 +99,5 @@ The profile maps request image names to the feature names expected by the checkp
 ```
 
 If no profile is supplied, the backend derives image names from the checkpoint's image feature
-keys. Missing state or required image paths return `invalid_request`; malformed model outputs
-return `invalid_output`.
+keys. Missing state, missing required images, unresolved frame refs, or missing paths return
+`invalid_request`; malformed model outputs return `invalid_output`.

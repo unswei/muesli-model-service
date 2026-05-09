@@ -159,6 +159,47 @@ Large data should be sent by reference rather than copied through JSON:
 
 `MMSP v0.2` validates references as structured protocol objects but does not require every deployment to resolve external stores.
 
+## frame ingest
+
+High-frequency camera data should enter the service through the frame ingest endpoint, not through model-call JSON.
+
+Publish the latest frame for a camera stream:
+
+```http
+PUT /v1/frames/camera1
+Content-Type: image/jpeg
+X-MMS-Timestamp-Ns: 1730000000000000000
+```
+
+The body is the encoded image bytes. The response contains both an immutable frame ref and a moving latest ref:
+
+```json
+{
+  "ref": "frame://camera1/1730000000000000000",
+  "latest_ref": "frame://camera1/latest",
+  "media_type": "image/jpeg",
+  "encoding": "jpeg",
+  "timestamp_ns": 1730000000000000000,
+  "sha256": "abc123",
+  "size_bytes": 81234
+}
+```
+
+Model calls can then stay small:
+
+```json
+{
+  "observation": {
+    "images": {
+      "camera1": { "ref": "frame://camera1/latest" },
+      "camera2": { "ref": "frame://camera2/latest" }
+    }
+  }
+}
+```
+
+Backends resolve `frame://.../latest` inside the service. Responses should report immutable resolved refs in metadata once the bridge records replay artefacts.
+
 ## session lifecycle
 
 Session states are `created`, `running`, `completed`, `failed`, `cancelled`, and `closed`. A deadline timeout on `step` returns `timeout` to the caller but does not automatically cancel the session.

@@ -19,6 +19,7 @@ from muesli_model_service.runtime.sessions import (
     SessionState,
     unknown_session_response,
 )
+from muesli_model_service.store.frames import FrameStore, FrameStoreError
 
 SMOLVLA_BASE_MODEL = "lerobot/smolvla_base"
 
@@ -82,6 +83,7 @@ class SmolVLABackend(CapabilityBackend):
         dt_ms: int = 33,
         backend_key: str = "smolvla",
         adapter: SmolVLAAdapter | None = None,
+        frame_store: FrameStore | None = None,
     ) -> None:
         self.sessions = sessions
         self.model_path = model_path
@@ -90,6 +92,7 @@ class SmolVLABackend(CapabilityBackend):
         self.action_type = ActionType(action_type)
         self.dt_ms = dt_ms
         self.backend_key = backend_key
+        self.frame_store = frame_store
         self.adapter = adapter or LeRobotSmolVLAAdapter(
             model_path=model_path,
             device=device,
@@ -237,17 +240,70 @@ class SmolVLABackend(CapabilityBackend):
                 request_id, "missing_images", "SmolVLA observation.images is required"
             )
 
+        resolved_images: dict[str, Any] = dict(images)
+        resolved_refs: dict[str, str] = {}
         for image_name in self.adapter.required_image_names:
             image_ref = images.get(image_name)
-            if not isinstance(image_ref, dict) or not isinstance(image_ref.get("path"), str):
+            resolved_image = self._resolve_image_input(image_name, image_ref, request_id)
+            if isinstance(resolved_image, ResponseEnvelope):
+                return resolved_image
+            resolved_images[image_name] = resolved_image
+            if isinstance(resolved_image.get("resolved_ref"), str):
+                resolved_refs[image_name] = str(resolved_image["resolved_ref"])
+
+        resolved_observation = dict(observation)
+        resolved_observation["images"] = resolved_images
+        if resolved_refs:
+            resolved_observation["resolved_refs"] = resolved_refs
+
+        return SmolVLACallInput(instruction=instruction.strip(), observation=resolved_observation)
+
+    def _resolve_image_input(
+        self, image_name: str, image_ref: Any, request_id: str
+    ) -> dict[str, Any] | ResponseEnvelope:
+        if not isinstance(image_ref, dict):
+            return self._invalid_request(
+                request_id,
+                "missing_image",
+                f"SmolVLA observation.images.{image_name} must be an object",
+                details={"image": image_name},
+            )
+
+        if isinstance(image_ref.get("path"), str):
+            return dict(image_ref)
+
+        ref = image_ref.get("ref")
+        if isinstance(ref, str):
+            if self.frame_store is None:
                 return self._invalid_request(
                     request_id,
-                    "missing_image",
-                    f"SmolVLA observation.images.{image_name}.path is required",
+                    "frame_store_unavailable",
+                    "SmolVLA image refs require a configured frame store",
                     details={"image": image_name},
                 )
+            try:
+                record = self.frame_store.resolve(ref)
+            except FrameStoreError as exc:
+                return self._invalid_request(
+                    request_id,
+                    "frame_ref_not_found",
+                    str(exc),
+                    details={"image": image_name, "ref": ref},
+                )
+            resolved = dict(image_ref)
+            resolved["path"] = str(record.path)
+            resolved["resolved_ref"] = record.ref
+            resolved["media_type"] = record.media_type
+            resolved["timestamp_ns"] = record.timestamp_ns
+            resolved["sha256"] = record.sha256
+            return resolved
 
-        return SmolVLACallInput(instruction=instruction.strip(), observation=observation)
+        return self._invalid_request(
+            request_id,
+            "missing_image",
+            f"SmolVLA observation.images.{image_name}.path or .ref is required",
+            details={"image": image_name},
+        )
 
     def _format_prediction(self, prediction: SmolVLAPrediction) -> dict[str, Any]:
         if prediction.chunk_length <= 0 or prediction.action_dim <= 0:
