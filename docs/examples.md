@@ -55,6 +55,27 @@ curl -X PUT http://127.0.0.1:8765/v1/frames/camera1 \
 }
 ```
 
+An action-chunk response has `status: "action_chunk"` and returns proposals under `output.actions`:
+
+```json
+{
+  "version": "0.2",
+  "id": "step",
+  "status": "action_chunk",
+  "output": {
+    "actions": [
+      { "type": "joint_targets", "values": [0.1, -0.2, 0.0], "dt_ms": 33 }
+    ]
+  },
+  "session_id": "sess-000001",
+  "error": null,
+  "metadata": {
+    "capability": "cap.vla.action_chunk.v1",
+    "backend": "mock-action-chunker"
+  }
+}
+```
+
 ```json
 {
   "version": "0.2",

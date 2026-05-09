@@ -200,6 +200,8 @@ Model calls can then stay small:
 
 Backends resolve `frame://.../latest` inside the service. Responses should report immutable resolved refs in metadata once the bridge records replay artefacts.
 
+Current `MMSP v0.2` implementations resolve refs service-side before backend preprocessing. Recording the exact immutable refs used by a model call is a replay-hardening item; clients must not treat `latest` as reproducible evidence by itself.
+
 ## session lifecycle
 
 Session states are `created`, `running`, `completed`, `failed`, `cancelled`, and `closed`. A deadline timeout on `step` returns `timeout` to the caller but does not automatically cancel the session.
@@ -240,13 +242,41 @@ Start an action-chunk session:
 }
 ```
 
-Step the session:
+Step an action-chunk session:
 
 ```json
 {
   "version": "0.2",
   "id": "req-step-1",
   "op": "step",
-  "session_id": "sess-000001"
+  "session_id": "sess-000001",
+  "deadline_ms": 60000
+}
+```
+
+The response uses `status: "action_chunk"` and places action proposals under `output.actions`:
+
+```json
+{
+  "version": "0.2",
+  "id": "req-step-1",
+  "status": "action_chunk",
+  "output": {
+    "actions": [
+      {
+        "type": "joint_targets",
+        "values": [0.10, -0.17, -0.20, -0.04, -0.03, 0.38],
+        "dt_ms": 33
+      }
+    ]
+  },
+  "session_id": "sess-000001",
+  "error": null,
+  "metadata": {
+    "capability": "cap.vla.action_chunk.v1",
+    "backend": "smolvla",
+    "action_dim": 6,
+    "chunk_length": 50
+  }
 }
 ```

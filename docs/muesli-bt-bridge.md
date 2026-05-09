@@ -122,11 +122,41 @@ A VLA request should reference already-ingested frames:
 }
 ```
 
+After `start` returns a `session_id`, `step` returns action proposals as `status: "action_chunk"` with `output.actions`:
+
+```json
+{
+  "version": "0.2",
+  "id": "vla-step-1",
+  "status": "action_chunk",
+  "output": {
+    "actions": [
+      {
+        "type": "joint_targets",
+        "values": [0.10, -0.17, -0.20, -0.04, -0.03, 0.38],
+        "dt_ms": 33
+      }
+    ]
+  },
+  "session_id": "sess-000001",
+  "error": null,
+  "metadata": {
+    "capability": "cap.vla.action_chunk.v1",
+    "backend": "smolvla",
+    "action_dim": 6,
+    "chunk_length": 50
+  }
+}
+```
+
+These are still proposals. `muesli-bt` must validate freshness, schema, policy, bounds, and fallback rules before host execution can observe them.
+
 ## gotchas
 
 - Service availability is optional. Unavailable service status must be fallback-capable in `muesli-bt`.
 - Backend metadata is not part of BT semantics.
 - `frame://.../latest` is a service-local handle. Image bytes are transported by frame ingest, not by the model-call envelope.
+- Recording the immutable refs actually consumed by a backend is still a replay-hardening item.
 - A timeout on `step` does not implicitly cancel the service session.
 - Invalid, stale, unsafe, or late outputs must be rejected before host execution.
 

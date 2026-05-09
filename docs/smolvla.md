@@ -84,6 +84,34 @@ Then reference the latest frame in the VLA request:
 }
 ```
 
+The session `step` response uses the same protocol shape as the mock VLA capability. The SmolVLA backend returns proposals under `output.actions` and reports backend details in metadata:
+
+```json
+{
+  "version": "0.2",
+  "id": "vla-step-1",
+  "status": "action_chunk",
+  "output": {
+    "actions": [
+      {
+        "type": "joint_targets",
+        "values": [0.10, -0.17, -0.20, -0.04, -0.03, 0.38],
+        "dt_ms": 33
+      }
+    ]
+  },
+  "session_id": "sess-000001",
+  "error": null,
+  "metadata": {
+    "capability": "cap.vla.action_chunk.v1",
+    "backend": "smolvla",
+    "adapter": "lerobot",
+    "action_dim": 6,
+    "chunk_length": 50
+  }
+}
+```
+
 The profile maps request image names to the feature names expected by the checkpoint:
 
 ```json

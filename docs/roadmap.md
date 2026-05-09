@@ -20,9 +20,9 @@ Add stricter compatibility fixtures, C++-friendly examples, clearer timeout beha
 
 Add action schema registration, bounds metadata, richer action types, `invalid_output`, and `unsafe_output` handling.
 
-## v0.6: Local Data References
+## v0.6: Local Data References and Frame Ingest
 
-Resolve local `file://`, `artifact://`, `frame://`, and `state://` references without copying large data through JSON.
+Resolve local `file://`, `artifact://`, `frame://`, and `state://` references without copying large data through JSON. Harden the HTTP frame-ingest path by recording immutable resolved refs, replay hashes, expiry policy, and back-pressure behaviour for high-rate camera streams.
 
 ## v0.7 and Later
 
