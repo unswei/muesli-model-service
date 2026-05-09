@@ -12,23 +12,17 @@ def test_mock_capabilities_are_listed() -> None:
 
     capability_ids = {item.id for item in registry.describe()}
 
-    assert "mock-action-chunker" in capability_ids
-    assert "mock-world-model" in capability_ids
+    assert "cap.vla.action_chunk.v1" in capability_ids
+    assert "cap.vla.propose_nav_goal.v1" in capability_ids
+    assert "cap.model.world.rollout.v1" in capability_ids
+    assert "cap.model.world.score_trajectory.v1" in capability_ids
 
 
 def test_unknown_capability_raises_lookup() -> None:
     registry = CapabilityRegistry()
 
     with pytest.raises(LookupError):
-        registry.resolve("missing", "act")
-
-
-def test_unknown_method_raises_lookup() -> None:
-    registry = CapabilityRegistry()
-    registry.register("mock", MockBackend(SessionManager()))
-
-    with pytest.raises(LookupError):
-        registry.resolve("mock-world-model", "missing")
+        registry.resolve("missing")
 
 
 def test_method_mode_mismatch_raises_value_error() -> None:
@@ -36,4 +30,4 @@ def test_method_mode_mismatch_raises_value_error() -> None:
     registry.register("mock", MockBackend(SessionManager()))
 
     with pytest.raises(ValueError):
-        registry.resolve("mock-world-model", "rollout", MethodMode.SESSION)
+        registry.resolve("cap.model.world.rollout.v1", MethodMode.SESSION)

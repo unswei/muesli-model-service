@@ -2,7 +2,7 @@
 
 `muesli-model-service` is an optional companion service for `muesli-bt`. It hosts heavyweight model-backed robot capabilities outside the behaviour-tree runtime and returns proposals, predictions, scores, annotations, or action chunks.
 
-It does not command the robot, own safety policy, execute behaviour-tree semantics, embed Python inside `muesli-bt`, or require LeRobot, PyTorch, CUDA, ROS2, cameras, robot hardware, a database, or a web UI for v0.1.
+It does not command the robot, own safety policy, execute behaviour-tree semantics, embed Python inside `muesli-bt`, or require LeRobot, PyTorch, CUDA, ROS2, cameras, robot hardware, a database, or a web UI for the current bridge contract.
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ Expected output includes:
 
 ```text
 connected to ws://127.0.0.1:8765/v1/ws
-describe: mock-action-chunker available
+describe: cap.vla.action_chunk.v1 available
 start: session sess-000001 running
 step: received 2 action proposals
 step: received 1 action proposal
@@ -45,11 +45,14 @@ close: success
 
 ## Mock Backend
 
-The mock backend exposes:
+The mock backend exposes public capability ids that match the `muesli-bt` runtime contract:
 
-- `mock-action-chunker.act` as a session method that emits deterministic action chunks.
-- `mock-world-model.rollout` as an invoke method that returns deterministic predicted state vectors.
-- `mock-world-model.score_trajectory` as an invoke method that returns a deterministic scalar score.
+- `cap.vla.action_chunk.v1` as a session capability that emits deterministic action chunks.
+- `cap.vla.propose_nav_goal.v1` as a stateless navigation-goal proposal capability.
+- `cap.model.world.rollout.v1` as a stateless world-model rollout capability.
+- `cap.model.world.score_trajectory.v1` as a stateless trajectory scoring capability.
+
+Backend-specific names such as `mock-action-chunker` and `mock-world-model` are metadata only. Clients should use the public capability ids.
 
 ## Development
 
@@ -62,6 +65,6 @@ uv run pytest
 
 ## Roadmap
 
-v0.1 makes the protocol real and testable. Later versions add replay traceability, tighter bridge support for `muesli-bt`, action validation, local data references, backend plugins, and optional real model adapters.
+`MMSP v0.2` is the first `muesli-bt`-aligned protocol. It makes capability ids first-class, keeps WebSocket as the first transport, and keeps model outputs as proposals that must still pass `muesli-bt` validation before host execution.
 
 See `CHANGELOG.md` for release notes and `TODO.md` for outstanding implementation work.

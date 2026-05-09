@@ -8,7 +8,7 @@ async def main() -> None:
     uri = "ws://127.0.0.1:8765/v1/ws"
     async with websockets.connect(uri) as websocket:
         await websocket.send(
-            json.dumps({"version": "0.1", "id": "req-describe-1", "op": "describe", "payload": {}})
+            json.dumps({"version": "0.2", "id": "req-describe-1", "op": "describe"})
         )
         print(await websocket.recv())
 

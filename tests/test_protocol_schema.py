@@ -9,33 +9,34 @@ from muesli_model_service.protocol.statuses import ProtocolStatus
 def test_valid_request_envelope_parses() -> None:
     request = RequestEnvelope.model_validate(
         {
-            "version": "0.1",
+            "version": "0.2",
             "id": "req-1",
             "op": "invoke",
-            "payload": {"capability": "x", "method": "y"},
+            "capability": "cap.model.world.rollout.v1",
+            "input": {"state": {"vector": [0.0]}},
         }
     )
 
     assert request.op == Operation.INVOKE
     assert request.id == "req-1"
+    assert request.version == "0.2"
+    assert request.capability == "cap.model.world.rollout.v1"
 
 
 def test_invalid_operation_is_rejected() -> None:
     with pytest.raises(ValidationError):
-        RequestEnvelope.model_validate(
-            {"version": "0.1", "id": "req-1", "op": "bad", "payload": {}}
-        )
+        RequestEnvelope.model_validate({"version": "0.2", "id": "req-1", "op": "bad", "input": {}})
 
 
 def test_missing_request_id_is_rejected() -> None:
     with pytest.raises(ValidationError):
-        RequestEnvelope.model_validate({"version": "0.1", "op": "describe", "payload": {}})
+        RequestEnvelope.model_validate({"version": "0.2", "op": "describe", "input": {}})
 
 
 def test_unknown_status_is_rejected() -> None:
     with pytest.raises(ValidationError):
         ResponseEnvelope.model_validate(
-            {"version": "0.1", "id": "req-1", "status": "weird", "payload": {}}
+            {"version": "0.2", "id": "req-1", "status": "weird", "output": {}}
         )
 
 

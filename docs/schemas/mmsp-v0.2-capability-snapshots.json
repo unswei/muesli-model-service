@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mms://schemas/mmsp-v0.2-capability-snapshots",
+  "title": "MMSP v0.2 capability schema snapshots",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "vector_state": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "vector": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "action_proposal": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string" },
+        "values": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "dt_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "nav_goal": {
+      "type": "object",
+      "required": ["x", "y", "theta"],
+      "additionalProperties": true,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "theta": { "type": "number" },
+        "frame": { "type": "string" }
+      }
+    }
+  },
+  "properties": {
+    "cap.model.world.rollout.v1.request": {
+      "type": "object",
+      "required": ["state", "actions"],
+      "additionalProperties": true,
+      "properties": {
+        "state": { "$ref": "#/$defs/vector_state" },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action_proposal" }
+        },
+        "horizon": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "cap.model.world.rollout.v1.response": {
+      "type": "object",
+      "required": ["predicted_states", "score"],
+      "additionalProperties": true,
+      "properties": {
+        "predicted_states": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/vector_state" }
+        },
+        "score": { "type": "number" }
+      }
+    },
+    "cap.model.world.score_trajectory.v1.request": {
+      "type": "object",
+      "required": ["trajectory"],
+      "additionalProperties": true,
+      "properties": {
+        "trajectory": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/vector_state" }
+        }
+      }
+    },
+    "cap.model.world.score_trajectory.v1.response": {
+      "type": "object",
+      "required": ["score"],
+      "additionalProperties": true,
+      "properties": {
+        "score": { "type": "number" }
+      }
+    },
+    "cap.vla.action_chunk.v1.request": {
+      "type": "object",
+      "required": ["instruction"],
+      "additionalProperties": true,
+      "properties": {
+        "instruction": { "type": "string" },
+        "observation": { "type": "object" },
+        "constraints": { "type": "object" }
+      }
+    },
+    "cap.vla.action_chunk.v1.response": {
+      "type": "object",
+      "required": ["actions"],
+      "additionalProperties": true,
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action_proposal" }
+        }
+      }
+    },
+    "cap.vla.propose_nav_goal.v1.request": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "instruction": { "type": "string" },
+        "observation": { "type": "object" },
+        "goal_hint": { "$ref": "#/$defs/nav_goal" }
+      }
+    },
+    "cap.vla.propose_nav_goal.v1.response": {
+      "type": "object",
+      "required": ["goal"],
+      "additionalProperties": true,
+      "properties": {
+        "goal": { "$ref": "#/$defs/nav_goal" },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+      }
+    }
+  }
+}

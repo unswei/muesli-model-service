@@ -90,9 +90,10 @@ def unknown_session_response(request_id: str, session_id: str):
     return response(
         request_id,
         ProtocolStatus.INVALID_REQUEST,
+        session_id=session_id or None,
         error=error(
             "session_not_found",
             f"Session '{session_id}' is not active",
-            details={"session": session_id},
+            details={"session_id": session_id},
         ),
     )

@@ -48,12 +48,12 @@ class Dispatcher:
             return response(
                 request.id,
                 ProtocolStatus.SUCCESS,
-                payload={
+                output={
                     "capabilities": [
                         item.model_dump(mode="json") for item in self.registry.describe()
                     ]
                 },
-                metadata={"service": "muesli-model-service", "service_version": "0.1.0"},
+                metadata={"service": "muesli-model-service", "service_version": "0.2.0"},
             )
         if request.op == Operation.INVOKE:
             resolved = self._resolve(request, MethodMode.INVOKE)
@@ -66,7 +66,7 @@ class Dispatcher:
                 return resolved
             return await with_deadline(resolved.backend.start(request), request.deadline_ms)
         if request.op in {Operation.STEP, Operation.CANCEL, Operation.STATUS, Operation.CLOSE}:
-            session_id = request.payload.get("session")
+            session_id = request.session_id
             if not isinstance(session_id, str) or not session_id:
                 return response(
                     request.id,
@@ -93,25 +93,24 @@ class Dispatcher:
         )
 
     def _resolve(self, request: RequestEnvelope, mode: MethodMode):
-        capability = request.payload.get("capability")
-        method = request.payload.get("method")
-        if not isinstance(capability, str) or not isinstance(method, str):
+        capability = request.capability
+        if not isinstance(capability, str):
             return response(
                 request.id,
                 ProtocolStatus.INVALID_REQUEST,
                 error=error(
-                    "missing_capability_or_method",
-                    "Operation requires payload.capability and payload.method",
+                    "missing_capability",
+                    "Operation requires capability",
                 ),
             )
-        resolved = self._resolve_capability(capability, method, mode)
+        resolved = self._resolve_capability(capability, mode)
         if isinstance(resolved, ResponseEnvelope):
             return resolved
         return resolved
 
-    def _resolve_capability(self, capability: str, method: str, mode: MethodMode):
+    def _resolve_capability(self, capability: str, mode: MethodMode):
         try:
-            return self.registry.resolve(capability, method, mode)
+            return self.registry.resolve(capability, mode)
         except (LookupError, ValueError) as exc:
             raise UnavailableResponse(exc) from exc
 
@@ -125,13 +124,11 @@ class Dispatcher:
     def _log_request(
         self, request: RequestEnvelope, result: ResponseEnvelope, duration_ms: float
     ) -> None:
-        payload = request.payload
         structured: dict[str, Any] = {
             "request_id": request.id,
             "op": request.op.value,
-            "capability": payload.get("capability"),
-            "method": payload.get("method"),
-            "session": payload.get("session") or result.payload.get("session"),
+            "capability": request.capability,
+            "session_id": request.session_id or result.session_id,
             "status": result.status.value,
             "duration_ms": round(duration_ms, 3),
         }

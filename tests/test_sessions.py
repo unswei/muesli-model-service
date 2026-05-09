@@ -8,27 +8,28 @@ async def test_session_lifecycle(dispatcher: Dispatcher) -> None:
         RequestEnvelope(
             id="start",
             op=Operation.START,
-            payload={"capability": "mock-action-chunker", "method": "act", "input": {}},
+            capability="cap.vla.action_chunk.v1",
+            input={},
         )
     )
-    session = start.payload["session"]
+    session = start.session_id
 
     step = await dispatcher.dispatch(
-        RequestEnvelope(id="step", op=Operation.STEP, payload={"session": session})
+        RequestEnvelope(id="step", op=Operation.STEP, session_id=session)
     )
     status = await dispatcher.dispatch(
-        RequestEnvelope(id="status", op=Operation.STATUS, payload={"session": session})
+        RequestEnvelope(id="status", op=Operation.STATUS, session_id=session)
     )
     close = await dispatcher.dispatch(
-        RequestEnvelope(id="close", op=Operation.CLOSE, payload={"session": session})
+        RequestEnvelope(id="close", op=Operation.CLOSE, session_id=session)
     )
     unknown = await dispatcher.dispatch(
-        RequestEnvelope(id="unknown", op=Operation.STATUS, payload={"session": session})
+        RequestEnvelope(id="unknown", op=Operation.STATUS, session_id=session)
     )
 
     assert start.status == ProtocolStatus.RUNNING
     assert step.status == ProtocolStatus.ACTION_CHUNK
-    assert status.payload["session"] == session
+    assert status.output["session"] == session
     assert close.status == ProtocolStatus.SUCCESS
     assert unknown.status == ProtocolStatus.INVALID_REQUEST
 
@@ -38,14 +39,13 @@ async def test_cancel_cancels_session(dispatcher: Dispatcher) -> None:
         RequestEnvelope(
             id="start",
             op=Operation.START,
-            payload={"capability": "mock-action-chunker", "method": "act", "input": {}},
+            capability="cap.vla.action_chunk.v1",
+            input={},
         )
     )
 
     cancel = await dispatcher.dispatch(
-        RequestEnvelope(
-            id="cancel", op=Operation.CANCEL, payload={"session": start.payload["session"]}
-        )
+        RequestEnvelope(id="cancel", op=Operation.CANCEL, session_id=start.session_id)
     )
 
     assert cancel.status == ProtocolStatus.CANCELLED
@@ -53,7 +53,7 @@ async def test_cancel_cancels_session(dispatcher: Dispatcher) -> None:
 
 async def test_unknown_session_returns_invalid_request(dispatcher: Dispatcher) -> None:
     result = await dispatcher.dispatch(
-        RequestEnvelope(id="missing", op=Operation.STATUS, payload={"session": "sess-missing"})
+        RequestEnvelope(id="missing", op=Operation.STATUS, session_id="sess-missing")
     )
 
     assert result.status == ProtocolStatus.INVALID_REQUEST

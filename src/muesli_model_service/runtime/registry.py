@@ -11,7 +11,6 @@ class ResolvedCapability:
     backend_key: str
     backend: CapabilityBackend
     descriptor: CapabilityDescriptor
-    method_name: str
     method_mode: MethodMode
 
 
@@ -28,9 +27,7 @@ class CapabilityRegistry:
     def describe(self) -> list[CapabilityDescriptor]:
         return [descriptor for _, descriptor in self._capability_index.values()]
 
-    def resolve(
-        self, capability: str, method: str, mode: MethodMode | None = None
-    ) -> ResolvedCapability:
+    def resolve(self, capability: str, mode: MethodMode | None = None) -> ResolvedCapability:
         if capability not in self._capability_index:
             raise LookupError(
                 error(
@@ -40,25 +37,15 @@ class CapabilityRegistry:
                 ).model_dump()
             )
         backend_key, descriptor = self._capability_index[capability]
-        method_descriptor = next((item for item in descriptor.methods if item.name == method), None)
-        if method_descriptor is None:
-            raise LookupError(
-                error(
-                    "method_not_found",
-                    f"Method '{method}' is not registered for capability '{capability}'",
-                    details={"capability": capability, "method": method},
-                ).model_dump()
-            )
-        if mode is not None and method_descriptor.mode != mode:
+        if mode is not None and descriptor.mode != mode:
             raise ValueError(
                 error(
                     "method_mode_mismatch",
-                    f"Method '{method}' does not support {mode.value} mode",
+                    f"Capability '{capability}' does not support {mode.value} mode",
                     details={
                         "capability": capability,
-                        "method": method,
                         "expected_mode": mode.value,
-                        "actual_mode": method_descriptor.mode.value,
+                        "actual_mode": descriptor.mode.value,
                     },
                 ).model_dump()
             )
@@ -66,8 +53,7 @@ class CapabilityRegistry:
             backend_key=backend_key,
             backend=self._backends[backend_key],
             descriptor=descriptor,
-            method_name=method_descriptor.name,
-            method_mode=method_descriptor.mode,
+            method_mode=descriptor.mode,
         )
 
 

@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from muesli_model_service.backends.base import CapabilityBackend
 from muesli_model_service.protocol.capabilities import (
     CapabilityDescriptor,
-    CapabilityMethod,
     MethodMode,
 )
 from muesli_model_service.protocol.envelope import RequestEnvelope, ResponseEnvelope, response
@@ -32,7 +31,6 @@ class ReplayFixture(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     capability: str
-    method: str
     mode: MethodMode
     kind: str = "action_model"
     description: str = "Replay capability loaded from fixture"
@@ -63,7 +61,7 @@ class ReplayBackend(CapabilityBackend):
         backend_key: str = "replay",
     ) -> None:
         self.sessions = sessions
-        self.fixtures = {(fixture.capability, fixture.method): fixture for fixture in fixtures}
+        self.fixtures = {fixture.capability: fixture for fixture in fixtures}
         self.backend_key = backend_key
 
     @classmethod
@@ -78,52 +76,45 @@ class ReplayBackend(CapabilityBackend):
                     id=fixture.capability,
                     kind=fixture.kind,
                     description=fixture.description,
-                    methods=[
-                        CapabilityMethod(
-                            name=fixture.method,
-                            mode=fixture.mode,
-                            input_schema=f"mms://schemas/{fixture.capability}/{fixture.method}/input",
-                            output_schema=f"mms://schemas/{fixture.capability}/{fixture.method}/output",
-                            supports_cancel=fixture.mode == MethodMode.SESSION,
-                        )
-                    ],
+                    mode=fixture.mode,
+                    input_schema=f"mms://schemas/{fixture.capability}/input",
+                    output_schema=f"mms://schemas/{fixture.capability}/output",
+                    supports_cancel=fixture.mode == MethodMode.SESSION,
+                    replay={"supported": True, "source": "fixture"},
                     metadata={"backend": "replay", **fixture.metadata},
                 )
             )
         return descriptors
 
     async def invoke(self, request: RequestEnvelope) -> ResponseEnvelope:
-        fixture = self.fixtures[
-            (str(request.payload["capability"]), str(request.payload["method"]))
-        ]
+        fixture = self.fixtures[str(request.capability)]
         if not fixture.steps:
             return self._exhausted(request.id)
         step = fixture.steps[0]
         return response(
             request.id,
             step.status,
-            payload={"output": step.output},
+            output=step.output,
             metadata={"backend": "replay", **step.metadata},
         )
 
     async def start(self, request: RequestEnvelope) -> ResponseEnvelope:
-        capability = str(request.payload["capability"])
-        method = str(request.payload["method"])
+        capability = str(request.capability)
         session = self.sessions.create(
             backend_key=self.backend_key,
             capability=capability,
-            method=method,
-            data={"steps": self.fixtures[(capability, method)].steps},
+            method="session",
+            data={"steps": self.fixtures[capability].steps},
         )
         return response(
             request.id,
             ProtocolStatus.RUNNING,
-            payload={"session": session.id},
-            metadata={"capability": capability, "method": method, "backend": "replay"},
+            session_id=session.id,
+            metadata={"capability": capability, "backend": "replay"},
         )
 
     async def step(self, request: RequestEnvelope) -> ResponseEnvelope:
-        session_id = str(request.payload.get("session", ""))
+        session_id = str(request.session_id or "")
         try:
             session = self.sessions.mark_step(session_id)
         except KeyError:
@@ -139,21 +130,22 @@ class ReplayBackend(CapabilityBackend):
         return response(
             request.id,
             step.status,
-            payload={"session": session.id, "output": step.output},
+            output=step.output,
+            session_id=session.id,
             metadata={"backend": "replay", **step.metadata},
         )
 
     async def cancel(self, request: RequestEnvelope) -> ResponseEnvelope:
-        session_id = str(request.payload.get("session", ""))
+        session_id = str(request.session_id or "")
         try:
             session = self.sessions.require(session_id)
         except KeyError:
             return unknown_session_response(request.id, session_id)
         session.state = SessionState.CANCELLED
-        return response(request.id, ProtocolStatus.CANCELLED, payload={"session": session.id})
+        return response(request.id, ProtocolStatus.CANCELLED, session_id=session.id)
 
     async def status(self, request: RequestEnvelope) -> ResponseEnvelope:
-        session_id = str(request.payload.get("session", ""))
+        session_id = str(request.session_id or "")
         try:
             session = self.sessions.require(session_id)
         except KeyError:
@@ -165,22 +157,23 @@ class ReplayBackend(CapabilityBackend):
             status = ProtocolStatus.CANCELLED
         if session.state == SessionState.FAILED:
             status = ProtocolStatus.FAILURE
-        return response(request.id, status, payload=self.sessions.to_payload(session))
+        return response(
+            request.id, status, output=self.sessions.to_payload(session), session_id=session.id
+        )
 
     async def close(self, request: RequestEnvelope) -> ResponseEnvelope:
-        session_id = str(request.payload.get("session", ""))
+        session_id = str(request.session_id or "")
         try:
             session = self.sessions.close(session_id)
         except KeyError:
             return unknown_session_response(request.id, session_id)
-        return response(request.id, ProtocolStatus.SUCCESS, payload={"session": session.id})
+        return response(request.id, ProtocolStatus.SUCCESS, session_id=session.id)
 
     def _exhausted(self, request_id: str, session_id: str | None = None) -> ResponseEnvelope:
-        payload = {"session": session_id} if session_id else {}
         return response(
             request_id,
             ProtocolStatus.FAILURE,
-            payload=payload,
+            session_id=session_id,
             error=error("replay_exhausted", "Replay fixture has no further recorded outputs"),
             metadata={"backend": "replay"},
         )

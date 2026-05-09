@@ -13,8 +13,7 @@ def write_replay(path: Path) -> None:
     path.write_text(
         json.dumps(
             {
-                "capability": "replay-action-model",
-                "method": "act",
+                "capability": "cap.vla.action_chunk.v1",
                 "mode": "session",
                 "steps": [
                     {
@@ -45,7 +44,7 @@ async def test_valid_replay_files_load(tmp_path: Path) -> None:
 
     fixtures = load_replay_fixtures(path)
 
-    assert fixtures[0].capability == "replay-action-model"
+    assert fixtures[0].capability == "cap.vla.action_chunk.v1"
 
 
 async def test_replay_capability_appears_in_describe(tmp_path: Path) -> None:
@@ -55,8 +54,8 @@ async def test_replay_capability_appears_in_describe(tmp_path: Path) -> None:
 
     result = await dispatcher.dispatch(RequestEnvelope(id="describe", op=Operation.DESCRIBE))
 
-    ids = {item["id"] for item in result.payload["capabilities"]}
-    assert "replay-action-model" in ids
+    ids = {item["id"] for item in result.output["capabilities"]}
+    assert "cap.vla.action_chunk.v1" in ids
 
 
 async def test_session_steps_return_replayed_outputs(tmp_path: Path) -> None:
@@ -68,15 +67,16 @@ async def test_session_steps_return_replayed_outputs(tmp_path: Path) -> None:
         RequestEnvelope(
             id="start",
             op=Operation.START,
-            payload={"capability": "replay-action-model", "method": "act", "input": {}},
+            capability="cap.vla.action_chunk.v1",
+            input={},
         )
     )
     step = await dispatcher.dispatch(
-        RequestEnvelope(id="step", op=Operation.STEP, payload={"session": start.payload["session"]})
+        RequestEnvelope(id="step", op=Operation.STEP, session_id=start.session_id)
     )
 
     assert step.status == ProtocolStatus.ACTION_CHUNK
-    assert step.payload["output"]["actions"][0]["values"] == [0.1, 0.2]
+    assert step.output["actions"][0]["values"] == [0.1, 0.2]
 
 
 async def test_replay_exhaustion_is_handled_clearly(tmp_path: Path) -> None:
@@ -87,15 +87,14 @@ async def test_replay_exhaustion_is_handled_clearly(tmp_path: Path) -> None:
         RequestEnvelope(
             id="start",
             op=Operation.START,
-            payload={"capability": "replay-action-model", "method": "act", "input": {}},
+            capability="cap.vla.action_chunk.v1",
+            input={},
         )
     )
 
     for index in range(3):
         result = await dispatcher.dispatch(
-            RequestEnvelope(
-                id=f"step-{index}", op=Operation.STEP, payload={"session": start.payload["session"]}
-            )
+            RequestEnvelope(id=f"step-{index}", op=Operation.STEP, session_id=start.session_id)
         )
 
     assert result.status == ProtocolStatus.FAILURE

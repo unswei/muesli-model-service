@@ -1,7 +1,6 @@
 from muesli_model_service.protocol.actions import ActionProposal, ActionType
 from muesli_model_service.protocol.capabilities import (
     CapabilityDescriptor,
-    CapabilityMethod,
     MethodMode,
 )
 from muesli_model_service.protocol.envelope import Operation, RequestEnvelope, ResponseEnvelope
@@ -13,7 +12,6 @@ __all__ = [
     "ActionProposal",
     "ActionType",
     "CapabilityDescriptor",
-    "CapabilityMethod",
     "DataReference",
     "ErrorObject",
     "MethodMode",

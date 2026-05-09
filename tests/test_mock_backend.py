@@ -8,29 +8,24 @@ async def test_mock_action_chunker_returns_deterministic_outputs(dispatcher: Dis
         RequestEnvelope(
             id="start",
             op=Operation.START,
-            payload={"capability": "mock-action-chunker", "method": "act", "input": {}},
+            capability="cap.vla.action_chunk.v1",
+            input={},
         )
     )
 
     first = await dispatcher.dispatch(
-        RequestEnvelope(
-            id="step-1", op=Operation.STEP, payload={"session": start.payload["session"]}
-        )
+        RequestEnvelope(id="step-1", op=Operation.STEP, session_id=start.session_id)
     )
     second = await dispatcher.dispatch(
-        RequestEnvelope(
-            id="step-2", op=Operation.STEP, payload={"session": start.payload["session"]}
-        )
+        RequestEnvelope(id="step-2", op=Operation.STEP, session_id=start.session_id)
     )
     third = await dispatcher.dispatch(
-        RequestEnvelope(
-            id="step-3", op=Operation.STEP, payload={"session": start.payload["session"]}
-        )
+        RequestEnvelope(id="step-3", op=Operation.STEP, session_id=start.session_id)
     )
 
     assert first.status == ProtocolStatus.ACTION_CHUNK
-    assert first.payload["output"]["actions"][0]["values"] == [0.10, 0.40, -0.20]
-    assert second.payload["output"]["actions"][0]["type"] == "gripper"
+    assert first.output["actions"][0]["values"] == [0.10, 0.40, -0.20]
+    assert second.output["actions"][0]["type"] == "gripper"
     assert third.status == ProtocolStatus.SUCCESS
 
 
@@ -39,20 +34,17 @@ async def test_mock_world_model_returns_deterministic_rollout(dispatcher: Dispat
         RequestEnvelope(
             id="rollout",
             op=Operation.INVOKE,
-            payload={
-                "capability": "mock-world-model",
-                "method": "rollout",
-                "input": {
-                    "state": {"vector": [0.0, 1.0]},
-                    "actions": [{"type": "joint_targets", "values": [0.1, 0.3], "dt_ms": 20}],
-                    "horizon": 1,
-                },
+            capability="cap.model.world.rollout.v1",
+            input={
+                "state": {"vector": [0.0, 1.0]},
+                "actions": [{"type": "joint_targets", "values": [0.1, 0.3], "dt_ms": 20}],
+                "horizon": 1,
             },
         )
     )
 
     assert result.status == ProtocolStatus.SUCCESS
-    assert result.payload["output"]["predicted_states"] == [{"vector": [0.2, 1.2]}]
+    assert result.output["predicted_states"] == [{"vector": [0.2, 1.2]}]
 
 
 async def test_mock_scoring_returns_deterministic_scalar(dispatcher: Dispatcher) -> None:
@@ -60,13 +52,26 @@ async def test_mock_scoring_returns_deterministic_scalar(dispatcher: Dispatcher)
         RequestEnvelope(
             id="score",
             op=Operation.INVOKE,
-            payload={
-                "capability": "mock-world-model",
-                "method": "score_trajectory",
-                "input": {"trajectory": [{"vector": [0.2, 0.3]}]},
-            },
+            capability="cap.model.world.score_trajectory.v1",
+            input={"trajectory": [{"vector": [0.2, 0.3]}]},
         )
     )
 
     assert result.status == ProtocolStatus.SUCCESS
-    assert result.payload["output"]["score"] == 0.666667
+    assert result.output["score"] == 0.666667
+
+
+async def test_mock_nav_goal_returns_public_capability_metadata(dispatcher: Dispatcher) -> None:
+    result = await dispatcher.dispatch(
+        RequestEnvelope(
+            id="nav-goal",
+            op=Operation.INVOKE,
+            capability="cap.vla.propose_nav_goal.v1",
+            input={"goal_hint": {"x": 2.0, "y": 3.0, "theta": 0.5}},
+        )
+    )
+
+    assert result.status == ProtocolStatus.SUCCESS
+    assert result.output["goal"]["x"] == 2.0
+    assert result.metadata["capability"] == "cap.vla.propose_nav_goal.v1"
+    assert result.metadata["backend"] == "mock-nav-goal"

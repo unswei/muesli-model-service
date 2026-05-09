@@ -4,19 +4,16 @@
 
 ```json
 {
-  "version": "0.1",
+  "version": "0.2",
   "id": "req-rollout-1",
   "op": "invoke",
-  "payload": {
-    "capability": "mock-world-model",
-    "method": "rollout",
-    "input": {
-      "state": { "vector": [0.0, 1.0] },
-      "actions": [
-        { "type": "joint_targets", "values": [0.1, 0.3], "dt_ms": 20 }
-      ],
-      "horizon": 1
-    }
+  "capability": "cap.model.world.rollout.v1",
+  "input": {
+    "state": { "vector": [0.0, 1.0] },
+    "actions": [
+      { "type": "joint_targets", "values": [0.1, 0.3], "dt_ms": 20 }
+    ],
+    "horizon": 1
   }
 }
 ```
@@ -25,41 +22,32 @@
 
 ```json
 {
-  "version": "0.1",
+  "version": "0.2",
   "id": "start",
   "op": "start",
-  "payload": {
-    "capability": "mock-action-chunker",
-    "method": "act",
-    "input": {
-      "instruction": "inspect the plant",
-      "observation": {}
-    }
+  "capability": "cap.vla.action_chunk.v1",
+  "input": {
+    "instruction": "inspect the plant",
+    "observation": {}
   }
 }
 ```
 
 ```json
 {
-  "version": "0.1",
+  "version": "0.2",
   "id": "step",
   "op": "step",
-  "payload": {
-    "session": "sess-000001",
-    "input": {}
-  }
+  "session_id": "sess-000001"
 }
 ```
 
 ```json
 {
-  "version": "0.1",
+  "version": "0.2",
   "id": "cancel",
   "op": "cancel",
-  "payload": {
-    "session": "sess-000001",
-    "reason": "bt_branch_aborted"
-  }
+  "session_id": "sess-000001"
 }
 ```
 
@@ -69,8 +57,7 @@ Create `replay.json`:
 
 ```json
 {
-  "capability": "replay-action-model",
-  "method": "act",
+  "capability": "cap.vla.action_chunk.v1",
   "mode": "session",
   "steps": [
     {
@@ -106,4 +93,3 @@ examples/ws_client.py
 examples/invoke_score.py
 examples/session_action_chunk.py
 ```
-
