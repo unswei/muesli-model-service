@@ -6,9 +6,9 @@ This file tracks near-term engineering work that is not yet part of the implemen
 
 - Add exported JSON Schema snapshots for the implemented protocol models if the `muesli-bt` bridge needs checked-in fixtures.
 - Add explicit tests for deadline timeout behaviour on `invoke` and `step`.
-- Add tests for malformed action proposals returning `invalid_output` once output validation is wired through backends.
 - Add a small committed replay fixture under `examples/` or `tests/fixtures/`.
 - Confirm the first `muesli-bt` bridge can consume the current envelope and descriptor shape without extra compatibility fields.
+- Run and record gated SmolVLA and MiniVLA GPU smoke tests on magrathea once model dependencies are installed.
 
 ## v0.2 Candidates
 
@@ -17,6 +17,7 @@ This file tracks near-term engineering work that is not yet part of the implemen
 - Improve replay metadata and fixture validation diagnostics.
 - Add local artefact references for reproducible research outputs.
 - Add structured request/response log redaction tests.
+- Harden MiniVLA/OpenVLA-Mini adapter coverage against the exact upstream callable API used by the selected checkpoint.
 
 ## Later
 

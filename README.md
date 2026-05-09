@@ -64,11 +64,18 @@ The mock backend exposes public capability ids that match the `muesli-bt` runtim
 
 Backend-specific names such as `mock-action-chunker` and `mock-world-model` are metadata only. Clients should use the public capability ids.
 
-## SmolVLA Backend
+## VLA Backends
 
-The first real VLA backend is LeRobot SmolVLA behind the optional `smolvla` dependency extra. It is disabled by default and still exposes the public `cap.vla.action_chunk.v1` capability when enabled.
+Real VLA backends are optional and disabled by default. Select the action-chunk backend with
+`MMS_ACTION_CHUNK_BACKEND=mock|smolvla|minivla`. All backends expose the same public
+`cap.vla.action_chunk.v1` capability; backend names stay in metadata and do not change the
+`muesli-bt` contract.
 
-See `docs/smolvla.md` for magrathea validation, profile mapping, and example request shape.
+- SmolVLA uses LeRobot behind the optional `smolvla` dependency extra.
+- MiniVLA uses OpenVLA-Mini behind the optional `minivla` dependency extra.
+
+See `docs/smolvla.md` and `docs/minivla.md` for magrathea validation, profile mapping, and
+example request shapes.
 
 ## Development
 

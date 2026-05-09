@@ -26,4 +26,6 @@ Resolve local `file://`, `artifact://`, `frame://`, and `state://` references wi
 
 ## v0.7 and Later
 
-Add backend plugin loading, optional heavy dependency groups, real learned-policy backends, world-model backends, Zenoh transport, and research-grade traceability.
+Add backend plugin loading, more optional heavy dependency groups, additional learned-policy
+backends, world-model backends, Zenoh transport, and research-grade traceability. Keep all learned
+policy backends behind public capability ids so `muesli-bt` remains backend-neutral.

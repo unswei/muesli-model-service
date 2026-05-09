@@ -142,7 +142,8 @@ After `start` returns a `session_id`, `step` returns action proposals as `status
   "error": null,
   "metadata": {
     "capability": "cap.vla.action_chunk.v1",
-    "backend": "smolvla",
+    "backend": "selected-vla-backend",
+    "adapter": "selected-adapter",
     "action_dim": 6,
     "chunk_length": 50
   }

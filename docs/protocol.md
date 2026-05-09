@@ -8,6 +8,10 @@ The Muesli Model Service Protocol, abbreviated `MMSP`, is a transport-neutral lo
 
 A capability is a stable model-backed function exposed by the service. The capability id is the public contract. Backend names, model ids, GPU placement, and adapter details stay in service metadata.
 
+For `cap.vla.action_chunk.v1`, select the concrete backend with
+`MMS_ACTION_CHUNK_BACKEND=mock|smolvla|minivla`. The protocol envelope and capability id do not
+change when the backend changes.
+
 The initial public capabilities are:
 
 - `cap.model.world.rollout.v1`
@@ -274,7 +278,8 @@ The response uses `status: "action_chunk"` and places action proposals under `ou
   "error": null,
   "metadata": {
     "capability": "cap.vla.action_chunk.v1",
-    "backend": "smolvla",
+    "backend": "selected-vla-backend",
+    "adapter": "selected-adapter",
     "action_dim": 6,
     "chunk_length": 50
   }

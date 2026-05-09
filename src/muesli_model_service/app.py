@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException, Request, WebSocket
 
 from muesli_model_service import __version__
+from muesli_model_service.backends.minivla import MiniVLABackend
 from muesli_model_service.backends.mock import MockBackend
 from muesli_model_service.backends.replay import ReplayBackend
 from muesli_model_service.backends.smolvla import SmolVLABackend
@@ -18,14 +19,40 @@ from muesli_model_service.transports.http import describe_http
 from muesli_model_service.transports.websocket import websocket_endpoint
 
 
+def select_action_chunk_backend(settings: Settings) -> str:
+    explicit = settings.action_chunk_backend
+    shortcuts = [
+        name
+        for name, enabled in (
+            ("smolvla", settings.enable_smolvla_backend),
+            ("minivla", settings.enable_minivla_backend),
+        )
+        if enabled
+    ]
+    if explicit != "mock":
+        return explicit
+    if len(shortcuts) > 1:
+        raise ValueError(
+            "Only one VLA action backend shortcut can be enabled without MMS_ACTION_CHUNK_BACKEND"
+        )
+    if shortcuts:
+        return shortcuts[0]
+    return explicit
+
+
 def build_runtime(settings: Settings, frame_store: FrameStore | None = None) -> Dispatcher:
     sessions = SessionManager(max_sessions=settings.max_sessions)
     registry = CapabilityRegistry()
+    action_chunk_backend = select_action_chunk_backend(settings)
     if settings.enable_mock_backend:
         registry.register("mock", MockBackend(sessions))
     if settings.replay_path:
-        registry.register("replay", ReplayBackend.from_path(sessions, settings.replay_path))
-    if settings.enable_smolvla_backend:
+        registry.register(
+            "replay",
+            ReplayBackend.from_path(sessions, settings.replay_path),
+            replace=settings.enable_mock_backend,
+        )
+    if action_chunk_backend == "smolvla":
         registry.register(
             "smolvla",
             SmolVLABackend(
@@ -37,6 +64,23 @@ def build_runtime(settings: Settings, frame_store: FrameStore | None = None) -> 
                 dt_ms=settings.smolvla_dt_ms,
                 frame_store=frame_store,
             ),
+            replace=settings.enable_mock_backend or bool(settings.replay_path),
+        )
+    if action_chunk_backend == "minivla":
+        registry.register(
+            "minivla",
+            MiniVLABackend(
+                sessions,
+                model_path=settings.minivla_model_path,
+                device=settings.minivla_device,
+                profile_path=settings.minivla_profile_path,
+                action_type=settings.minivla_action_type,
+                dt_ms=settings.minivla_dt_ms,
+                unnorm_key=settings.minivla_unnorm_key,
+                dtype=settings.minivla_dtype,
+                frame_store=frame_store,
+            ),
+            replace=settings.enable_mock_backend or bool(settings.replay_path),
         )
     return Dispatcher(registry)
 

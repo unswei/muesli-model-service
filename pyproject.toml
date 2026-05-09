@@ -30,6 +30,15 @@ dev = [
 smolvla = [
   "lerobot[smolvla]==0.5.1"
 ]
+minivla = [
+  "torch>=2.2",
+  "torchvision>=0.17",
+  "transformers>=4.48",
+  "timm>=1.0",
+  "tokenizers>=0.20",
+  "Pillow>=10",
+  "accelerate>=0.30"
+]
 
 [project.scripts]
 muesli-model-service = "muesli_model_service.cli:main"
@@ -50,7 +59,8 @@ ignore = []
 asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
-  "smolvla_gpu: requires LeRobot SmolVLA dependencies and a GPU"
+  "smolvla_gpu: requires LeRobot SmolVLA dependencies and a GPU",
+  "minivla_gpu: requires MiniVLA dependencies and a GPU"
 ]
 
 [tool.pyright]

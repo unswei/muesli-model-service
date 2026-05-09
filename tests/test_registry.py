@@ -18,6 +18,20 @@ def test_mock_capabilities_are_listed() -> None:
     assert "cap.model.world.score_trajectory.v1" in capability_ids
 
 
+def test_duplicate_capability_requires_explicit_replace() -> None:
+    sessions = SessionManager()
+    registry = CapabilityRegistry()
+    registry.register("mock-a", MockBackend(sessions))
+
+    with pytest.raises(ValueError, match="already registered"):
+        registry.register("mock-b", MockBackend(sessions))
+
+    registry.register("mock-b", MockBackend(sessions), replace=True)
+
+    resolved = registry.resolve("cap.vla.action_chunk.v1")
+    assert resolved.backend_key == "mock-b"
+
+
 def test_unknown_capability_raises_lookup() -> None:
     registry = CapabilityRegistry()
 

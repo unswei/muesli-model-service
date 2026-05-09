@@ -19,9 +19,14 @@ class CapabilityRegistry:
         self._backends: dict[str, CapabilityBackend] = {}
         self._capability_index: dict[str, tuple[str, CapabilityDescriptor]] = {}
 
-    def register(self, key: str, backend: CapabilityBackend) -> None:
+    def register(self, key: str, backend: CapabilityBackend, *, replace: bool = False) -> None:
         self._backends[key] = backend
         for descriptor in backend.describe():
+            if descriptor.id in self._capability_index and not replace:
+                existing_key, _ = self._capability_index[descriptor.id]
+                raise ValueError(
+                    f"Capability '{descriptor.id}' is already registered by '{existing_key}'"
+                )
             self._capability_index[descriptor.id] = (key, descriptor)
 
     def describe(self) -> list[CapabilityDescriptor]:

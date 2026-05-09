@@ -8,6 +8,9 @@ The backend uses LeRobot's `SmolVLAPolicy.from_pretrained` behind the optional `
 dependency extra. The default checkpoint is `lerobot/smolvla_base`; use it only for GPU load and
 inference validation. Practical task performance requires a fine-tuned checkpoint.
 
+Select SmolVLA with `MMS_ACTION_CHUNK_BACKEND=smolvla`. The older
+`MMS_ENABLE_SMOLVLA_BACKEND=true` shortcut still works for compatibility.
+
 ## Install on magrathea
 
 LeRobot `0.5.1` requires Python 3.12 or newer, so the service uses Python 3.12 as its baseline.
@@ -30,7 +33,7 @@ uv run pytest tests/test_smolvla_gpu.py -m smolvla_gpu -vv
 ## Run the service
 
 ```bash
-MMS_ENABLE_SMOLVLA_BACKEND=true \
+MMS_ACTION_CHUNK_BACKEND=smolvla \
 MMS_SMOLVLA_MODEL_PATH=/path/to/fine-tuned-smolvla \
 MMS_SMOLVLA_DEVICE=cuda \
 MMS_SMOLVLA_PROFILE_PATH=/path/to/smolvla-profile.json \
