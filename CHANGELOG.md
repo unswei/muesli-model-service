@@ -28,6 +28,8 @@ Initial protocol-first implementation.
 - Optional OpenVLA-Mini backend for `cap.vla.action_chunk.v1`, including explicit
   `MMS_ACTION_CHUNK_BACKEND=mock|smolvla|minivla` selection, fake-adapter unit tests, a gated
   MiniVLA GPU smoke test, and magrathea run documentation.
+- Prismatic MiniVLA worker bridge for checkpoints that need the Python 3.11 OpenVLA-Mini runtime
+  while the base service stays on Python 3.12.
 - HTTP frame ingest endpoint at `PUT /v1/frames/{name}` so robot or simulator clients can stream encoded image frames to the service and pass `frame://...` refs in later model calls.
 - Service-local frame store with immutable timestamped refs, moving `latest` refs, media type, encoding, SHA-256, and byte-size metadata.
 - SmolVLA support for resolving `frame://...` image references before LeRobot preprocessing, so remote VLA calls no longer require manual file copying onto the service host.

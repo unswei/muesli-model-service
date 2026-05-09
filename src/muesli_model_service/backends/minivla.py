@@ -1,6 +1,8 @@
 import json
 import math
 import re
+import urllib.error
+import urllib.request
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from importlib import import_module
@@ -87,6 +89,7 @@ class MiniVLABackend(CapabilityBackend):
         dt_ms: int = 200,
         unnorm_key: str = "",
         dtype: str = "bfloat16",
+        worker_url: str | None = None,
         backend_key: str = "minivla",
         adapter: MiniVLAAdapter | None = None,
         frame_store: FrameStore | None = None,
@@ -99,9 +102,20 @@ class MiniVLABackend(CapabilityBackend):
         self.dt_ms = dt_ms
         self.unnorm_key = unnorm_key
         self.dtype = dtype
+        self.worker_url = worker_url
         self.backend_key = backend_key
         self.frame_store = frame_store
-        self._adapter = adapter
+        self._adapter = adapter or (
+            MiniVLAWorkerAdapter(
+                worker_url=worker_url,
+                profile=self.profile,
+                model_path=model_path,
+                device=device,
+                unnorm_key=unnorm_key,
+            )
+            if worker_url
+            else None
+        )
 
     def describe(self) -> list[CapabilityDescriptor]:
         return [
@@ -338,6 +352,7 @@ class MiniVLABackend(CapabilityBackend):
             "device": self.device,
             "dtype": self.dtype,
             "unnorm_key": self.unnorm_key,
+            "worker_url": self.worker_url,
             "base_model": self.model_path == MINIVLA_BASE_MODEL,
         }
         if prediction is not None:
@@ -390,6 +405,85 @@ class MiniVLABackend(CapabilityBackend):
         if self.profile.image_order:
             return tuple(self.profile.image_order)
         return ("camera1",)
+
+
+class MiniVLAWorkerAdapter:
+    def __init__(
+        self,
+        *,
+        worker_url: str,
+        profile: MiniVLAProfile,
+        model_path: str,
+        device: str,
+        unnorm_key: str,
+    ) -> None:
+        self.worker_url = worker_url.rstrip("/")
+        self.profile = profile
+        self.model_path = model_path
+        self.device = device
+        self.unnorm_key = unnorm_key
+        self.image_map = self._resolve_image_map()
+
+    @property
+    def required_image_names(self) -> tuple[str, ...]:
+        return tuple(self.image_map.keys())
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "required_images": list(self.required_image_names),
+            "state_key": self.profile.state_key,
+            "prompt_template": self.profile.prompt_template,
+            "worker_url": self.worker_url,
+            "worker": "prismatic-http",
+        }
+
+    def predict_action_chunk(self, call: MiniVLACallInput) -> MiniVLAPrediction:
+        images = call.observation["images"]
+        payload = {
+            "instruction": call.instruction,
+            "images": [images[name]["path"] for name in self.required_image_names],
+            "unnorm_key": self.unnorm_key or None,
+        }
+        raw = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            f"{self.worker_url}/act",
+            data=raw,
+            headers={"content-type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response_obj:
+                body = response_obj.read()
+        except urllib.error.URLError as exc:
+            raise MiniVLADependencyError(f"MiniVLA worker request failed: {exc}") from exc
+        try:
+            result = json.loads(body)
+        except json.JSONDecodeError as exc:
+            raise MiniVLAInvalidOutputError("MiniVLA worker returned invalid JSON") from exc
+        if not isinstance(result, dict):
+            raise MiniVLAInvalidOutputError("MiniVLA worker response must be an object")
+        if result.get("status") != "action_chunk":
+            message = result.get("error") if isinstance(result.get("error"), str) else result
+            raise MiniVLAInvalidOutputError(f"MiniVLA worker failed: {message}")
+        rows = _model_output_to_action_rows(result, self.profile.action_key)
+        if not rows:
+            raise MiniVLAInvalidOutputError("MiniVLA worker produced no action rows")
+        result_metadata = result.get("metadata")
+        metadata = result_metadata if isinstance(result_metadata, dict) else {}
+        return MiniVLAPrediction(
+            actions=rows,
+            action_dim=len(rows[0]),
+            chunk_length=len(rows),
+            metadata={"worker": "prismatic-http", **metadata},
+        )
+
+    def _resolve_image_map(self) -> dict[str, str]:
+        if self.profile.image_map:
+            return self.profile.image_map
+        if self.profile.image_order:
+            return {name: name for name in self.profile.image_order}
+        return {"camera1": "camera1"}
 
 
 class OpenVLAMiniAdapter:

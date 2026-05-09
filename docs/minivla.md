@@ -38,6 +38,41 @@ with an unstructured adapter error.
 
 ## Run the service
 
+For Prismatic-compatible checkpoints, run MiniVLA in a Python 3.11 worker and let the Python 3.12
+service call it over localhost HTTP. This keeps the VLA dependency stack out of the base service
+environment.
+
+Start the worker from a Python 3.11 environment that has `openvla-mini`, VQ-BeT, TensorFlow 2.15,
+and the Bridge VQ files installed:
+
+```bash
+cd /home/oliver/minivla-runtime
+PRISMATIC_DATA_ROOT=/tmp \
+.venv/bin/python /home/oliver/muesli-model-service-smolvla/tools/minivla_prismatic_worker.py \
+  --host 127.0.0.1 \
+  --port 8766 \
+  --working-dir /home/oliver/minivla-runtime \
+  --checkpoint /home/oliver/minivla-runtime/models/minivla-vq-bridge-prismatic/checkpoints/step-362500-epoch-21-loss=0.2259.pt \
+  --device cuda \
+  --unnorm-key bridge_dataset
+```
+
+Then start the service with MiniVLA selected and the worker URL configured:
+
+```bash
+uv run muesli-model-service serve \
+  --host 127.0.0.1 \
+  --port 8765 \
+  --action-chunk-backend minivla \
+  --minivla-worker-url http://127.0.0.1:8766 \
+  --minivla-model-path Stanford-ILIAD/minivla-vq-bridge-prismatic \
+  --minivla-device cuda \
+  --minivla-unnorm-key bridge_dataset
+```
+
+The direct in-process path remains useful only for checkpoints that work with the standard
+Hugging Face `AutoProcessor` / `AutoModelForVision2Seq` path:
+
 ```bash
 MMS_ACTION_CHUNK_BACKEND=minivla \
 MMS_MINIVLA_MODEL_PATH=Stanford-ILIAD/minivla-vq-bridge-prismatic \
@@ -152,11 +187,15 @@ field.
 - `MMS_MINIVLA_DT_MS`, default `200`
 - `MMS_MINIVLA_UNNORM_KEY`, optional
 - `MMS_MINIVLA_DTYPE`, default `bfloat16`
+- `MMS_MINIVLA_WORKER_URL`, optional HTTP worker URL for Prismatic-compatible checkpoints
 
 ## Gotchas
 
 - The public capability id is still `cap.vla.action_chunk.v1`.
 - MiniVLA metadata must not leak into `muesli-bt` semantics.
+- The `minivla-vq-bridge-prismatic` checkpoint needs the Prismatic/OpenVLA-Mini runtime, Bridge
+  VQ files, and Python 3.11-compatible TensorFlow dependencies. Prefer the worker path for this
+  checkpoint.
 - `frame://.../latest` is a service-local moving handle. Record immutable resolved refs for replay
   evidence.
 - Practical robot performance depends on the selected checkpoint and profile, not only on service

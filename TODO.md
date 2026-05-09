@@ -9,6 +9,8 @@ This file tracks near-term engineering work that is not yet part of the implemen
 - Add a small committed replay fixture under `examples/` or `tests/fixtures/`.
 - Confirm the first `muesli-bt` bridge can consume the current envelope and descriptor shape without extra compatibility fields.
 - Run and record gated SmolVLA and MiniVLA GPU smoke tests on magrathea once model dependencies are installed.
+- Promote the Prismatic MiniVLA worker setup into a reproducible install script once the exact
+  dependency pins have stabilised.
 
 ## v0.2 Candidates
 

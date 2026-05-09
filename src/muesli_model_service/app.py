@@ -78,6 +78,7 @@ def build_runtime(settings: Settings, frame_store: FrameStore | None = None) -> 
                 dt_ms=settings.minivla_dt_ms,
                 unnorm_key=settings.minivla_unnorm_key,
                 dtype=settings.minivla_dtype,
+                worker_url=settings.minivla_worker_url,
                 frame_store=frame_store,
             ),
             replace=settings.enable_mock_backend or bool(settings.replay_path),

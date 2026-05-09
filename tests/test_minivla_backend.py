@@ -1,5 +1,6 @@
 import math
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -9,6 +10,7 @@ from muesli_model_service.backends.minivla import (
     MiniVLACallInput,
     MiniVLADependencyError,
     MiniVLAPrediction,
+    MiniVLAWorkerAdapter,
 )
 from muesli_model_service.backends.mock import MockBackend
 from muesli_model_service.config import Settings
@@ -268,6 +270,7 @@ async def test_app_registers_minivla_backend_after_mock(monkeypatch) -> None:
             dt_ms: int,
             unnorm_key: str,
             dtype: str,
+            worker_url: str | None,
             frame_store: FrameStore | None,
         ) -> None:
             super().__init__(
@@ -279,6 +282,7 @@ async def test_app_registers_minivla_backend_after_mock(monkeypatch) -> None:
                 dt_ms=dt_ms,
                 unnorm_key=unnorm_key,
                 dtype=dtype,
+                worker_url=worker_url,
                 adapter=FakeMiniVLAAdapter(),
                 frame_store=frame_store,
             )
@@ -307,3 +311,34 @@ def test_minivla_backend_reports_dependency_failure_as_structured_result(monkeyp
 
     with pytest.raises(MiniVLADependencyError):
         _ = backend.adapter
+
+
+def test_minivla_worker_adapter_returns_action_chunk() -> None:
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"status":"action_chunk","actions":[[0.1,0.2]],"metadata":{"loaded":true}}'
+
+    adapter = MiniVLAWorkerAdapter(
+        worker_url="http://127.0.0.1:8766",
+        profile=MiniVLABackend(SessionManager(), adapter=FakeMiniVLAAdapter()).profile,
+        model_path="/models/minivla",
+        device="cuda",
+        unnorm_key="bridge_dataset",
+    )
+    call = MiniVLACallInput(
+        instruction="move",
+        observation={"state": [0.0], "images": {"camera1": {"path": "/tmp/frame.jpg"}}},
+    )
+
+    with patch("muesli_model_service.backends.minivla.urllib.request.urlopen") as urlopen:
+        urlopen.return_value = FakeResponse()
+        prediction = adapter.predict_action_chunk(call)
+
+    assert prediction.actions == [[0.1, 0.2]]
+    assert prediction.metadata["loaded"] is True

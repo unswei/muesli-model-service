@@ -37,6 +37,7 @@ def serve(
     minivla_dt_ms: Annotated[int, typer.Option()] = 200,
     minivla_unnorm_key: Annotated[str, typer.Option()] = "",
     minivla_dtype: Annotated[str, typer.Option()] = "bfloat16",
+    minivla_worker_url: Annotated[str | None, typer.Option()] = None,
 ) -> None:
     settings = Settings(
         host=host,
@@ -59,6 +60,7 @@ def serve(
         minivla_dt_ms=minivla_dt_ms,
         minivla_unnorm_key=minivla_unnorm_key,
         minivla_dtype=minivla_dtype,
+        minivla_worker_url=minivla_worker_url,
     )
     app = create_app(settings)
     uvicorn.run(app, host=settings.host, port=settings.port, log_level=settings.log_level)

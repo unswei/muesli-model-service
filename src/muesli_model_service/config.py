@@ -30,3 +30,4 @@ class Settings(BaseSettings):
     minivla_dt_ms: int = Field(default=200, ge=0)
     minivla_unnorm_key: str = ""
     minivla_dtype: str = "bfloat16"
+    minivla_worker_url: str | None = None
