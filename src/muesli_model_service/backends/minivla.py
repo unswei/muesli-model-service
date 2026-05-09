@@ -101,13 +101,7 @@ class MiniVLABackend(CapabilityBackend):
         self.dtype = dtype
         self.backend_key = backend_key
         self.frame_store = frame_store
-        self.adapter = adapter or OpenVLAMiniAdapter(
-            model_path=model_path,
-            device=device,
-            profile=self.profile,
-            unnorm_key=unnorm_key,
-            dtype=dtype,
-        )
+        self._adapter = adapter
 
     def describe(self) -> list[CapabilityDescriptor]:
         return [
@@ -130,7 +124,7 @@ class MiniVLABackend(CapabilityBackend):
                     "unnorm_key": self.unnorm_key,
                     "requires_gpu": self.device == "cuda",
                     "base_model": self.model_path == MINIVLA_BASE_MODEL,
-                    **self.adapter.metadata,
+                    **self._adapter_metadata(),
                 },
             )
         ]
@@ -169,7 +163,12 @@ class MiniVLABackend(CapabilityBackend):
         try:
             prediction = self.adapter.predict_action_chunk(parsed)
             output = self._format_prediction(prediction)
-        except (MiniVLAInvalidOutputError, ValidationError, ValueError) as exc:
+        except (
+            MiniVLADependencyError,
+            MiniVLAInvalidOutputError,
+            ValidationError,
+            ValueError,
+        ) as exc:
             return response(
                 request.id,
                 ProtocolStatus.INVALID_OUTPUT,
@@ -247,7 +246,7 @@ class MiniVLABackend(CapabilityBackend):
 
         resolved_images: dict[str, Any] = dict(images)
         resolved_refs: dict[str, str] = {}
-        for image_name in self.adapter.required_image_names:
+        for image_name in self._required_image_names():
             image_ref = images.get(image_name)
             resolved_image = self._resolve_image_input(image_name, image_ref, request_id)
             if isinstance(resolved_image, ResponseEnvelope):
@@ -360,6 +359,37 @@ class MiniVLABackend(CapabilityBackend):
             error=error(code, message, details=details),
             metadata={"backend": "minivla", "adapter": "openvla-mini"},
         )
+
+    @property
+    def adapter(self) -> MiniVLAAdapter:
+        if self._adapter is None:
+            self._adapter = OpenVLAMiniAdapter(
+                model_path=self.model_path,
+                device=self.device,
+                profile=self.profile,
+                unnorm_key=self.unnorm_key,
+                dtype=self.dtype,
+            )
+        return self._adapter
+
+    def _adapter_metadata(self) -> dict[str, Any]:
+        if self._adapter is not None:
+            return self._adapter.metadata
+        return {
+            "required_images": list(self._required_image_names()),
+            "state_key": self.profile.state_key,
+            "prompt_template": self.profile.prompt_template,
+            "lazy_load": True,
+        }
+
+    def _required_image_names(self) -> tuple[str, ...]:
+        if self._adapter is not None:
+            return self._adapter.required_image_names
+        if self.profile.image_map:
+            return tuple(self.profile.image_map.keys())
+        if self.profile.image_order:
+            return tuple(self.profile.image_order)
+        return ("camera1",)
 
 
 class OpenVLAMiniAdapter:

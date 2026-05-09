@@ -296,13 +296,14 @@ async def test_app_registers_minivla_backend_after_mock(monkeypatch) -> None:
     assert "cap.model.world.rollout.v1" in capabilities
 
 
-def test_minivla_backend_fails_fast_when_optional_dependencies_are_missing(monkeypatch) -> None:
+def test_minivla_backend_reports_dependency_failure_as_structured_result(monkeypatch) -> None:
     def fail_import(name: str) -> Any:
         if name == "torch":
             raise ImportError(name)
         raise AssertionError(name)
 
     monkeypatch.setattr("muesli_model_service.backends.minivla.import_module", fail_import)
+    backend = MiniVLABackend(SessionManager(), device="cpu")
 
     with pytest.raises(MiniVLADependencyError):
-        MiniVLABackend(SessionManager(), device="cpu")
+        _ = backend.adapter
