@@ -90,4 +90,5 @@ uv run pytest
 
 `MMSP v0.2` is the first `muesli-bt`-aligned protocol. It makes capability ids first-class, keeps WebSocket as the first transport, and keeps model outputs as proposals that must still pass `muesli-bt` validation before host execution.
 
-See `CHANGELOG.md` for release notes and `TODO.md` for outstanding implementation work.
+See `docs/user-manual.md` for user-facing operation notes, `docs/protocol.md` for the wire
+contract, `CHANGELOG.md` for release notes, and `TODO.md` for outstanding implementation work.
